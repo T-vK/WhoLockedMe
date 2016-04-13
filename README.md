@@ -10,3 +10,11 @@
 - another tab that shows which process is responsible for blocking which port
 - option to force a process to stop listenting on a certain port
 - abstract the code and put it into useful functions or classes so that it can be easily used by other scripts
+
+[Downlaod compiled version](WhoLockedMe.exe?raw=true)
+
+### Screenshots
+
+![Screenshot](Screenshots/Screenshot1.png)
+![Screenshot](Screenshots/Screenshot2.png)
+![Screenshot](Screenshots/Screenshot3.png)
