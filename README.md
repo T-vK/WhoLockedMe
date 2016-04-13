@@ -5,7 +5,7 @@
  * Credits to jNizM for the neat QueryDosDevice function!
  * Credits to Lexokos and "just me" for the GetIconGroupNameByIndex fucntion!
 
-This script requires AHK_H 32bit (Win32w), I will, however, try my best to port it to AHK_L.
+This script requires [AHK_H 32bit (Win32w)](https://github.com/HotKeyIt/ahkdll-v2-release/archive/master.zip), I will, however, try my best to port it to AHK_L.
 
 #### Future ideas include:
 - only show handles that are definitely locking a file
