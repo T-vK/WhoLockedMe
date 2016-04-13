@@ -15,7 +15,7 @@ LV_ModifyCol(1,300)
 LV_ModifyCol(2,300)
 Gui, Add, Button, w640 aw ay gGui_Reload, Reload
 Gui, Add, Progress, w640 aw ay vGui_Progress
-Gui, Show,, % "Showing " i " File Handles"
+Gui, Show,, WhoLockedMe
  
 Gui_Reload()
  
@@ -42,7 +42,7 @@ Gui_Reload() {
     hCurrentProc:=GetCurrentProcess()
     VarSetCapacity(procName,520)
     dataArray := []
-    i:=0
+    
     numgetRes := NumGet(&p,"UInt")
  
     LV_Delete()
@@ -75,7 +75,7 @@ Gui_Reload() {
         data.flags := h[A_Index].flags
         data.attributes := obi.Attributes
         data.handleCount := (obi.HandleCount - 1)
-        i++
+        
         If ZwQueryObject(hObject, ObjectNameInformation, oni[], obi.NameInformationLength = 0 ? 520 : obi.NameInformationLength)<0x7FFFFFFF { ; MAX_PATH*2:=520
             devicePath := StrGet(oni.Name.Buffer["",""],oni.Name.Length // 2,"UTF-16")
             RegexMatch(devicePath, "S)(^\\.+?\\.+?)(\\|$)", matches)
@@ -254,16 +254,6 @@ SetGlobals() {
     )"
     UNICODE_STRING := "WORD Length;WORD MaximumLength;WORD *Buffer"
     OBJECT_NAME_INFORMATION:="UNICODE_STRING Name"
-    ;SYSTEM_HANDLE_INFORMATION :="
-    ;(
-    ;    // Information Class 16
-    ;    int ProcessID;
-    ;    byte ObjectTypeNumber;
-    ;    byte Flags; // 0x01 = PROTECT_FROM_CLOSE, 0x02 = INHERIT
-    ;    ushort Handle;
-    ;    int Object_Pointer;
-    ;    int GrantedAccess;
-    ;)"
     SYSTEM_HANDLE_INFORMATION :="
     (
         // Information Class 16
@@ -271,7 +261,7 @@ SetGlobals() {
         byte ObjectTypeNumber;
         byte Flags; // 0x01 = PROTECT_FROM_CLOSE, 0x02 = INHERIT
         ushort Handle;
-        pvoid Object_Pointer; // <<<<< changed int to pvoid
+        int Object_Pointer;
         int GrantedAccess;
     )"
 }
