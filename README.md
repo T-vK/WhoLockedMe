@@ -6,7 +6,7 @@
  * Credits to Lexokos and "just me" for the GetIconGroupNameByIndex fucntion!
 
 #### Requirements
-The script requires [AHK_H 32bit (Win32w)](https://github.com/HotKeyIt/ahkdll-v2-release/archive/master.zip), I will, however, try my best to port it to AHK_L.  
+The script requires [AHK_H](https://github.com/HotKeyIt/ahkdll-v2-release/archive/master.zip), I will, however, try my best to port it to AHK_L.  
 If you just want to test it you can download the compiled version. (See link below)
 
 #### Future ideas include:
