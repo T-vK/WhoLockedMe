@@ -2,7 +2,7 @@
 ; https://autohotkey.com/boards/viewtopic.php?p=80447
 ; credits to HotkeyIt for the super complicated handle retrievement!
 ; credits to jNizM for the neat QueryDosDevice function!
-; credits to Lexokos and "just me" for the GetIconGroupNameByIndex fucntion
+; credits to Lexikos and "just me" for the GetIconGroupNameByIndex fucntion
  
 RunAsAdmin()
 SetGlobals()
