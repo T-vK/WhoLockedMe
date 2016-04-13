@@ -56,14 +56,14 @@ Gui_Reload() {
         GuiControl,, Gui_Progress, % A_Index/numgetRes*100
         If !hProc:=OpenProcess(0x40|0x400, false, h[A_Index].ProcessID) ;PROCESS_DUP_HANDLE:=0x40, PROCESS_QUERY_INFORMATION:=0x400
             Continue
-        If (ZwDuplicateObject(hProc, h[A_Index].Handle, hCurrentProc, getvar(hObject:=0), 0, 0, 0x4)){ ;DUPLICATE_SAME_ATTRIBUTES := 0x4
+        If (err:=ZwDuplicateObject(hProc, h[A_Index].Handle, hCurrentProc, getvar(hObject:=0), 0, 0, 0x4)){ ;DUPLICATE_SAME_ATTRIBUTES := 0x4
             CloseHandle(hProc)
             Continue
         }
         ZwQueryObject(hObject, ObjectBasicInformation, obi[], sizeof(obi))
-        ZwQueryObject(hObject, ObjectTypeInformation, oti[], obi.TypeInformationLength + 2)
-        If ("File" !=StrGet(oti.Name.Buffer["",""],oti.Name.Length // 2,"UTF-16") || GetFileType(hObject)!=1) {
-            CloseHandle(hObject),CloseHandle(hProc)
+        ZwQueryObject(hObject, ObjectTypeInformation, oti[], obi.TypeInformationLength + A_PtrSize)
+		If (((type:=StrGet(oti.Name.Buffer["",""],oti.Name.Length // 2,"UTF-16")) != "File" && type!="Directory") || GetFileType(hObject)!=1) {
+		    CloseHandle(hObject),CloseHandle(hProc)
             Continue
         }
         DllCall("QueryFullProcessImageName","Ptr", hProc, "Uint", 0, "Str", procName, "UInt*", sz:=520)
@@ -257,11 +257,11 @@ SetGlobals() {
     SYSTEM_HANDLE_INFORMATION :="
     (
         // Information Class 16
-        int ProcessID;
-        byte ObjectTypeNumber;
-        byte Flags; // 0x01 = PROTECT_FROM_CLOSE, 0x02 = INHERIT
-        ushort Handle;
-        int Object_Pointer;
-        int GrantedAccess;
+        ULONG	ProcessId;
+		BYTE	ObjectTypeNumber;
+		BYTE	Flags;
+		USHORT	Handle;
+		PVOID	Object;
+		INT	GrantedAccess;
     )"
 }
