@@ -3,7 +3,7 @@
 ; Credits to HotkeyIt for the super complicated handle retrievement!
 ; Credits to jNizM for the neat QueryDosDevice function!
 ; Credits to Lexikos and "just me" for the GetIconGroupNameByIndex function!
-; Credits to "just me" for translating the whole script into AHK_L!
+; Credits to "just me" for translating the whole script into AHK 1.1!
 
 #NoEnv
 SetBatchLines, -1
