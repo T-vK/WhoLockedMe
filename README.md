@@ -5,10 +5,12 @@
  * Credits to jNizM for the neat QueryDosDevice function!
  * Credits to Lexikos and "just me" for the GetIconGroupNameByIndex fucntion!
  * Credits to "just me" for translating the whole script into AHK 1.1!
-
+ * If I forgot to put *your* name into this list, tell me please!
+ 
 #### Links
- * [http://forums.codeguru.com/showthread.php?176997.html](http://forums.codeguru.com/showthread.php?176997.html)
- * [https://autohotkey.com/boards/viewtopic.php?p=80447](https://autohotkey.com/boards/viewtopic.php?p=80447)
+ * [Development topic on autohotkey.com](https://autohotkey.com/boards/viewtopic.php?p=80447)
+ * [Release topic on autohotkey.com](https://autohotkey.com/boards/viewtopic.php?p=80455)
+ * [The C++ code that has been translated to AHK code for the handle retrievement](http://forums.codeguru.com/showthread.php?176997.html)
 
 #### Requirements
 The script requires AHK 1.1. An older version that works for AHK_H can be found in the subfolder /AHK_H.
