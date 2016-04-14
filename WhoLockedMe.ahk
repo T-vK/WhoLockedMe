@@ -94,7 +94,7 @@ Gui_Reload() {
             If GetIconGroupNameByIndex(Data.FilePath, 1)
                Data.Icon := IL_Add(ImageListID, Data.FilePath, 0)
             Else
-               IL_Add(ImageList, "imageres.dll", 12)
+               Data.Icon := IL_Add(ImageListID, "imageres.dll", 12)
          }
          Else If (FileExt) {
             If ExtIcons[FileExt]
