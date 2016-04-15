@@ -68,6 +68,7 @@ GUI_FileLockTabCtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
       GUI_FileLockTabCtrlEvt("Gui_Filter")
    } Else If (ControlName = "GUI_CloseHandle") {
       Msgbox, Not implemented yet! I'm working on it.
+      
    } Else If (ControlName = "GUI_CloseProcess") {
       RowNumber := 0
       Loop {
@@ -75,17 +76,21 @@ GUI_FileLockTabCtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
          If !RowNumber
              Break
          LV_GetText(PID, RowNumber, 3)
-         Process, WaitClose, %PID%, 5 ;wait up to 5 secs until process closes
-         If !ErrorLevel {
+         Process, Close, %PID%
+         ;Process, WaitClose, %PID%, 5 ;wait up to 5 secs until process closes
+         ;If ErrorLevel {
+         ;   LV_GetText(Name, RowNumber, 2)
+         ;   MsgBox, Error: Unable to close %Name% (PID: %PID%)!
+         ;Else {
+            i := 1
             Loop % DataArray.Length() {
-               If (DataArray[A_Index].PID = PID)
-                  DataArray.RemoveAt(A_Index)
+               If (DataArray[i].PID = PID)
+                  DataArray.RemoveAt(i)
+               Else
+                  i++
             }
             GUI_FileLockTabCtrlEvt("Gui_Filter")
-         } Else {
-            LV_GetText(Name, RowNumber, 2)
-            MsgBox, Error: Unable to close %Name% (PID: %PID%)!
-         }
+         ;}
       }
    }
 }
