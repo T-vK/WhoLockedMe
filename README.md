@@ -19,6 +19,7 @@ If you just want to test it you can download the compiled version. (See link bel
 #### Future ideas include:
 - only show handles that are definitely locking a file
 - option to force a process to release a certain handle
+- option to close all handles responsible for keeping a device from ejecting
 - another tab that shows which process is responsible for blocking which port
 - option to force a process to stop listenting on a certain port
 - abstract the code and put it into useful functions or classes so that it can be easily used by other scripts

@@ -12,52 +12,64 @@ LoadLibraries()
 EnablePrivilege()
 File := FileOpen(A_ScriptFullPath, "r") ; cause this script to appear in the list
 ; ==================================================================================================================================
-Gui, Add, Edit, w640 r1 gGui_FilterList vGui_Filter
-Gui, Add, ListView, w640 r30 vFilesLV +LV0x00000400, Potentially locked|By
-LV_ModifyCol(1,300)
-LV_ModifyCol(2,300)
-Gui, Add, Button, w640 gGui_Reload, Reload
+Gui, Add, Edit, w640 r1 gGUI_FileLockTabCtrlEvt vGui_Filter
+Gui, Add, ListView, w640 r30 gGUI_FileLockTabCtrlEvt vFileLockLV +LV0x00000400, Potentially locked|By
+LV_ModifyCol(1,300), LV_ModifyCol(2,300)
+Gui, Add, Button, w640 gGUI_FileLockTabCtrlEvt vGUI_Reload, Reload
 Gui, Add, Progress, w640 vGui_Progress
 Gui, Show,, WhoLockedMe
 
-Gui_Reload()
+GUI_FileLockTabCtrlEvt("Gui_Reload")
 
 ; ==================================================================================================================================
-Gui_FilterList(ctrlHwnd:="", guiEvent:="", eventInfo:="", errLvl:=0) {
-   Global DataArray
-   GuiControlGet, Gui_Filter
-   LV_Delete()
-   GuiControl, -Redraw, FilesLV
-   Loop % DataArray.Length() {
-      Data := DataArray[A_Index]
-      FilePath := Data.FilePath ? Data.FilePath : Data.DevicePath
-      If (InStr(FilePath, Gui_Filter))
-         LV_Add("Icon" . Data.Icon, FilePath, Data.ProcFullPath)
+GUI_FileLockTabCtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
+   Static DataArray := []
+   Static ImageListID := 0
+   If (A_DefaultListView != "FileLockLV")
+       Gui, ListView, FileLockLV
+   GuiControlGet, ControlName, Name, %CtrlHwnd%
+   If (ControlName = "Gui_Filter") {
+      GuiControlGet, Gui_Filter
+      LV_Delete()
+      GuiControl, -Redraw, FileLockLV
+      Loop % DataArray.Length() {
+         Data := DataArray[A_Index]
+         FilePath := Data.FilePath ? Data.FilePath : Data.DevicePath
+         If (InStr(FilePath, Gui_Filter))
+            LV_Add("Icon" . Data.Icon, FilePath, Data.ProcFullPath)
+      }
+      GuiControl, +Redraw, FileLockLV
+   } Else If (ControlName = "GUI_Reload") {
+      LV_Delete()
+      If (ImageListID)
+         IL_Destroy(ImageListID)
+      ImageListID := IL_Create(1000, 100)
+      LV_SetImageList(ImageListID)
+      Callback := Func("FileHandleCallback")
+      DataArray := GetAllFileHandleInfo(Callback)
+      GuiControl, , Gui_Progress, 0
+      DataArrayCount := DataArray.MaxIndex()
+      Loop % DataArrayCount {
+         GuiControl, , Gui_Progress, % A_Index/DataArrayCount*100
+         DataArray[A_Index].Icon := IL_Add(ImageListID, "HICON:" . GetIconByPath(DataArray[A_Index].FilePath))
+      }
+      GUI_FileLockTabCtrlEvt("Gui_Filter")
    }
-   GuiControl, +Redraw, FilesLV
 }
 ; ==================================================================================================================================
-Gui_Reload() {
-   Static ImageListID := 0
+FileHandleCallback(PercentDone) {
+   GuiControl, , Gui_Progress, %PercentDone%
+}
+; ==================================================================================================================================
+GetAllFileHandleInfo(Callback:="") {
    Static hCurrentProc := DllCall("GetCurrentProcess", "UPtr")
-   Global DataArray ; let's make life as easy as needed
    DataArray := []
-   LV_Delete()
-   If (ImageListID)
-      IL_Destroy(ImageListId)
-   ImageListID := IL_Create(1000, 100)
-   IL_Add(ImageListID, "imageres.dll", 3) ; icon 1 = default
-   IL_Add(ImageListID, "shell32.dll", 5)  ; icon 2 = folder
-   IL_Add(ImageListID, "shell32.dll", 12)  ; icon 2 = exe default
-   LV_SetImageList(ImageListID)
-   GuiControl, , Gui_Progress, 0
    If !(SHI := QuerySystemHandleInformation()) {
       MsgBox, 16, Error!, % "Couldn't get SYSTEM_HANDLE_INFORMATION`nLast Error: " . Format("0x{:08X}", ErrorLevel)
       Return False
    }
    HandleCount := SHI.Count
    Loop %HandleCount% {
-      GuiControl, , Gui_Progress, % A_Index/HandleCount*100
       ; PROCESS_DUP_HANDLE = 0x40, PROCESS_QUERY_INFORMATION = 0x400
       If !(hProc := DllCall("OpenProcess", "UInt", 0x0440, "UInt", 0, "UInt", SHI[A_Index, "PID"], "UPtr"))
          Continue
@@ -86,14 +98,19 @@ Gui_Reload() {
          Data.FilePath := FilePath
          Data.Drive := SubStr(FilePath, 1, 1)
          Data.Isfolder := InStr(FileExist(FilePath), "D") ? True : False
-         Data.Icon := IL_Add(ImageListID, "HICON:" . GetIconByPath(Data.FilePath))
+      
+         ProgressInPercent := A_Index/HandleCount*100
+         If Callback
+            Callback.Call(ProgressInPercent)
          
          DataArray.Push(Data)
       }
       DllCall("CloseHandle", "Ptr", hObject)
       DllCall("CloseHandle", "Ptr", hProc)
    }
-   Gui_FilterList()
+   If Callback
+      Callback.Call(100)
+   Return DataArray
 }
 ; ==================================================================================================================================
 GuiClose(hwnd){
