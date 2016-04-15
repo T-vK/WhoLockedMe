@@ -143,12 +143,12 @@ GetIconByPath(Path) { ; fully qualified file path
    Static DelIconHandle := LoadPicture(A_WinDir "\System32\imageres.dll", "Icon85 w16 h16") ; red X icon
    FileExists := FileExist(Path)
    If (FileExists) {
+      SplitPath, Path, , , FileExt
       If (InStr(FileExists, "D") || FileExt = "exe" || FileExt = "ico") {
          pszPath := Path
          dwFileAttributes := 0x00
          uFlags := 0x0101
       } Else {
-         SplitPath, Path, , , FileExt
          pszPath := FileExt ? "." FileExt : ""
          dwFileAttributes := 0x80
          uFlags := 0x0111
