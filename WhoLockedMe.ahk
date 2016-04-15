@@ -26,7 +26,7 @@ GUI_FileLockTabCtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
    Static DataArray := []
    Static ImageListID := 0
    If (A_DefaultListView != "FileLockLV")
-       Gui, ListView, FileLockLV
+      Gui, ListView, FileLockLV
    GuiControlGet, ControlName, Name, %CtrlHwnd%
    If (ControlName = "Gui_Filter") {
       GuiControlGet, Gui_Filter
