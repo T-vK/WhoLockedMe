@@ -14,7 +14,7 @@ File := FileOpen(A_ScriptFullPath, "r") ; cause this script to appear in the lis
 ; ==================================================================================================================================
 Gui, Add, Edit, w640 r1 gGUI_FileLockTabCtrlEvt vGui_Filter
 Gui, Add, ListView, w640 r30 gGUI_FileLockTabCtrlEvt vFileLockLV +LV0x00000400, Potentially locked|By|PID
-LV_ModifyCol(1,280), LV_ModifyCol(2,280), LV_ModifyCol(3,50)
+LV_ModifyCol(1,419), LV_ModifyCol(2,150), LV_ModifyCol(3,50)
 Gui, Add, Button, w640 gGUI_FileLockTabCtrlEvt vGUI_Reload, Reload
 Gui, Add, Button, w640 gGUI_FileLockTabCtrlEvt vGUI_CloseHandle, Close Handle
 Gui, Add, Button, w640 gGUI_FileLockTabCtrlEvt vGUI_CloseProcess, Close Process
@@ -30,6 +30,7 @@ GuiClose(Hwnd){
 ; ==================================================================================================================================
 GUI_FileLockTabCtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
    Static DataArray := []
+   Static IconObject := {}
    Static ImageListID := 0
    If (A_DefaultListView != "FileLockLV")
       Gui, ListView, FileLockLV
@@ -42,7 +43,7 @@ GUI_FileLockTabCtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
          Data := DataArray[A_Index]
          FilePath := Data.FilePath ? Data.FilePath : Data.DevicePath
          If (InStr(FilePath, Gui_Filter))
-            LV_Add("Icon" . Data.Icon, FilePath, Data.ProcName, Data.PID)
+            LV_Add("Icon" Data.IconIndex, FilePath, Data.ProcName, Data.PID)
       }
       GuiControl, +Redraw, FileLockLV
    } Else If (ControlName = "GUI_Reload") {
@@ -57,7 +58,12 @@ GUI_FileLockTabCtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
       DataArrayCount := DataArray.MaxIndex()
       Loop % DataArrayCount {
          GuiControl, , Gui_Progress, % A_Index/DataArrayCount*100
-         DataArray[A_Index].Icon := IL_Add(ImageListID, "HICON:" . GetIconByPath(DataArray[A_Index].FilePath))
+         Data := DataArray[A_Index]
+         IconObjectId := Data.Exists ? Data.FilePath : "\\DELETED"
+         If IconObject[IconObjectId]
+            DataArray[A_Index].IconIndex := IconObject[IconObjectId]
+         Else
+            IconObject[IconObjectId] :=  DataArray[A_Index].IconIndex := IL_Add(ImageListID, "HICON:" . GetIconByPath(Data.FilePath), Data.FileExists)
       }
       GUI_FileLockTabCtrlEvt("Gui_Filter")
    } Else If (ControlName = "GUI_CloseHandle") {
@@ -107,7 +113,9 @@ GetAllFileHandleInfo(Callback:="") {
          Data.DevicePath := ONI.Name
          Data.FilePath := FilePath
          Data.Drive := SubStr(FilePath, 1, 1)
-         Data.Isfolder := InStr(FileExist(FilePath), "D") ? True : False
+         FileExists := FileExist(FilePath)
+         Data.Exists := FileExists ? True : False
+         Data.Isfolder := InStr(FileExists, "D") ? True : False
          SplitPath, ProcFullPath, ProcName
          Data.ProcName := ProcName
       
@@ -160,13 +168,12 @@ GetPathNameByHandle(hFile) {
    Return SubStr(FilePath, 1, 4) = "\\?\" ? SubStr(FilePath, 5) : FilePath
 }
 ; ==================================================================================================================================
-GetIconByPath(Path) { ; fully qualified file path
+GetIconByPath(Path, FileExists:="") { ; fully qualified file path, result of FileExist on Path (optional)
    ; SHGetFileInfo  -> http://msdn.microsoft.com/en-us/library/bb762179(v=vs.85).aspx
-   ; FIXME: when running as 32bit some icons are blank
    Static AW := A_IsUnicode ? "W" : "A"
    Static cbSFI := A_PtrSize + 8 + (340 << !!A_IsUnicode)
-   Static DelIconHandle := LoadPicture(A_WinDir "\System32\imageres.dll", "Icon85 w16 h16") ; red X icon
-   FileExists := FileExist(Path)
+   Static IconType := 2
+   FileExists := FileExists ? FileExists : FileExist(Path)
    If (FileExists) {
       SplitPath, Path, , , FileExt
       If (InStr(FileExists, "D") || FileExt = "exe" || FileExt = "ico") {
@@ -179,7 +186,7 @@ GetIconByPath(Path) { ; fully qualified file path
          uFlags := 0x0111
       }
    } Else ; If the file is deleted reutrn an appropriate icon. 
-      Return DelIconHandle ; FIXME: always returns blank icon
+      Return LoadPicture(A_WinDir "\System32\imageres.dll", "Icon85 w16 h16", IconType) ; TODO: find a way to retrieve the icon just once and return it everytime it is needed
    
    VarSetCapacity(SFI, cbSFI, 0) ; SHFILEINFO
    DllCall("Shell32.dll\SHGetFileInfo" . AW, "Str", pszPath, "UInt", dwFileAttributes, "Ptr", &SFI, "UInt", cbSFI, "UInt", uFlags, "UInt")
