@@ -55,7 +55,7 @@ GUI_FileLockTabCtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
       Callback := Func("FileHandleCallback")
       DataArray := GetAllFileHandleInfo(Callback)
       GuiControl, , Gui_Progress, 0
-      DataArrayCount := DataArray.MaxIndex()
+      DataArrayCount := DataArray.Length()
       Loop % DataArrayCount {
          GuiControl, , Gui_Progress, % A_Index/DataArrayCount*100
          Data := DataArray[A_Index]
@@ -69,7 +69,24 @@ GUI_FileLockTabCtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
    } Else If (ControlName = "GUI_CloseHandle") {
       Msgbox, Not implemented yet! I'm working on it.
    } Else If (ControlName = "GUI_CloseProcess") {
-      Msgbox, Not implemented yet! I'm working on it.
+      RowNumber := 0
+      Loop {
+         RowNumber := LV_GetNext(RowNumber)
+         If !RowNumber
+             Break
+         LV_GetText(PID, RowNumber, 3)
+         Process, WaitClose, %PID%, 5 ;wait up to 5 secs until proc closes
+         If !ErrorLevel {
+            Loop % DataArray.Length() {
+               If (DataArray[A_Index].PID = PID)
+                  DataArray.RemoveAt(A_Index)
+            }
+            GUI_FileLockTabCtrlEvt("Gui_Filter")
+         } Else {
+            LV_GetText(Name, RowNumber, 2)
+            MsgBox, Error: Unable to close %Name% (PID: %PID%)!
+         }
+      }
    }
 }
 ; ==================================================================================================================================
@@ -150,12 +167,12 @@ GetIconByPath(Path, FileExists:="") { ; fully qualified file path, result of Fil
    FileExists := FileExists ? FileExists : FileExist(Path)
    If (FileExists) {
       SplitPath, Path, , , FileExt
-      If (InStr(FileExists, "D") || FileExt = "exe" || FileExt = "ico") {
+      If (InStr(FileExists, "D") || FileExt = "exe" || FileExt = "ico" || FileExt = "") {
          pszPath := Path
          dwFileAttributes := 0x00
          uFlags := 0x0101
       } Else {
-         pszPath := FileExt ? "." FileExt : ""
+         pszPath := "." FileExt
          dwFileAttributes := 0x80
          uFlags := 0x0111
       }
