@@ -77,6 +77,15 @@ FileHandleCallback(PercentDone) {
    GuiControl, , Gui_Progress, %PercentDone%
 }
 ; ==================================================================================================================================
+LoadLibraries() {
+   DllCall("LoadLibrary", "Str", "Advapi32.dll", "UPtr")
+   DllCall("LoadLibrary", "Str", "Ntdll.dll", "UPtr")
+   DllCall("LoadLibrary", "Str", "Shell32.dll", "UPtr")
+}
+
+; ==================================================================================================================================
+; General functions that can simply be used in other scripts =======================================================================
+; ==================================================================================================================================
 GetAllFileHandleInfo(Callback:="") {
    Static hCurrentProc := DllCall("GetCurrentProcess", "UPtr")
    DataArray := []
@@ -133,41 +142,6 @@ GetAllFileHandleInfo(Callback:="") {
    Return DataArray
 }
 ; ==================================================================================================================================
-RunAsAdmin() {
-   If !(A_IsAdmin) {
-      Run % "*RunAs " . (A_IsCompiled ? "" : A_AhkPath . " ") . """" . A_ScriptFullPath . """"
-      ExitApp
-   }
-}
-; ==================================================================================================================================
-LoadLibraries() {
-   DllCall("LoadLibrary", "Str", "Advapi32.dll", "UPtr")
-   DllCall("LoadLibrary", "Str", "Ntdll.dll", "UPtr")
-   DllCall("LoadLibrary", "Str", "Shell32.dll", "UPtr")
-}
-; ==================================================================================================================================
-EnablePrivilege(Name := "SeDebugPrivilege") {
-   hProc := DllCall("GetCurrentProcess", "UPtr")
-   If DllCall("Advapi32.dll\LookupPrivilegeValue", "Ptr", 0, "Str", Name, "Int64P", LUID := 0, "UInt")
-   && DllCall("Advapi32.dll\OpenProcessToken", "Ptr", hProc, "UInt", 32, "PtrP", hToken := 0, "UInt") { ; TOKEN_ADJUST_PRIVILEGES = 32
-      VarSetCapacity(TP, 16, 0) ; TOKEN_PRIVILEGES
-      , NumPut(1, TP, "UInt")
-      , NumPut(LUID, TP, 4, "UInt64")
-      , NumPut(2, TP, 12, "UInt") ; SE_PRIVILEGE_ENABLED = 2
-      , DllCall("Advapi32.dll\AdjustTokenPrivileges", "Ptr", hToken, "UInt", 0, "Ptr", &TP, "UInt", 0, "Ptr", 0, "Ptr", 0, "UInt")
-   }
-   LastError := A_LastError
-   If (hToken)
-      DllCall("CloseHandle", "Ptr", hToken)
-   Return !(ErrorLevel := LastError)
-}
-; ==================================================================================================================================
-GetPathNameByHandle(hFile) {
-   VarSetCapacity(FilePath, 4096, 0)
-   DllCall("GetFinalPathNameByHandle", "Ptr", hFile, "Str", FilePath, "UInt", 2048, "UInt", 0, "UInt")
-   Return SubStr(FilePath, 1, 4) = "\\?\" ? SubStr(FilePath, 5) : FilePath
-}
-; ==================================================================================================================================
 GetIconByPath(Path, FileExists:="") { ; fully qualified file path, result of FileExist on Path (optional)
    ; SHGetFileInfo  -> http://msdn.microsoft.com/en-us/library/bb762179(v=vs.85).aspx
    Static AW := A_IsUnicode ? "W" : "A"
@@ -204,6 +178,12 @@ DuplicateObject(hProc, hCurrentProc, Handle, Options) {
                                                   , "UInt", Options
                                                   , "UInt")
    Return (Status) ? !(ErrorLevel := Status) : hObject
+}
+; ==================================================================================================================================
+GetPathNameByHandle(hFile) {
+   VarSetCapacity(FilePath, 4096, 0)
+   DllCall("GetFinalPathNameByHandle", "Ptr", hFile, "Str", FilePath, "UInt", 2048, "UInt", 0, "UInt")
+   Return SubStr(FilePath, 1, 4) = "\\?\" ? SubStr(FilePath, 5) : FilePath
 }
 ; ==================================================================================================================================
 QueryObjectBasicInformation(hObject) {
@@ -271,4 +251,27 @@ QuerySystemHandleInformation() {
       Addr += SizeSH
    }
    Return ObjSHI
+}
+; ==================================================================================================================================
+EnablePrivilege(Name := "SeDebugPrivilege") {
+   hProc := DllCall("GetCurrentProcess", "UPtr")
+   If DllCall("Advapi32.dll\LookupPrivilegeValue", "Ptr", 0, "Str", Name, "Int64P", LUID := 0, "UInt")
+   && DllCall("Advapi32.dll\OpenProcessToken", "Ptr", hProc, "UInt", 32, "PtrP", hToken := 0, "UInt") { ; TOKEN_ADJUST_PRIVILEGES = 32
+      VarSetCapacity(TP, 16, 0) ; TOKEN_PRIVILEGES
+      , NumPut(1, TP, "UInt")
+      , NumPut(LUID, TP, 4, "UInt64")
+      , NumPut(2, TP, 12, "UInt") ; SE_PRIVILEGE_ENABLED = 2
+      , DllCall("Advapi32.dll\AdjustTokenPrivileges", "Ptr", hToken, "UInt", 0, "Ptr", &TP, "UInt", 0, "Ptr", 0, "Ptr", 0, "UInt")
+   }
+   LastError := A_LastError
+   If (hToken)
+      DllCall("CloseHandle", "Ptr", hToken)
+   Return !(ErrorLevel := LastError)
+}
+; ==================================================================================================================================
+RunAsAdmin() {
+   If !(A_IsAdmin) {
+      Run % "*RunAs " . (A_IsCompiled ? "" : A_AhkPath . " ") . """" . A_ScriptFullPath . """"
+      ExitApp
+   }
 }
