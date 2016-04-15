@@ -13,14 +13,20 @@ EnablePrivilege()
 File := FileOpen(A_ScriptFullPath, "r") ; cause this script to appear in the list
 ; ==================================================================================================================================
 Gui, Add, Edit, w640 r1 gGUI_FileLockTabCtrlEvt vGui_Filter
-Gui, Add, ListView, w640 r30 gGUI_FileLockTabCtrlEvt vFileLockLV +LV0x00000400, Potentially locked|By
-LV_ModifyCol(1,300), LV_ModifyCol(2,300)
+Gui, Add, ListView, w640 r30 gGUI_FileLockTabCtrlEvt vFileLockLV +LV0x00000400, Potentially locked|By|PID
+LV_ModifyCol(1,280), LV_ModifyCol(2,280), LV_ModifyCol(3,50)
 Gui, Add, Button, w640 gGUI_FileLockTabCtrlEvt vGUI_Reload, Reload
+Gui, Add, Button, w640 gGUI_FileLockTabCtrlEvt vGUI_CloseHandle, Close Handle
+Gui, Add, Button, w640 gGUI_FileLockTabCtrlEvt vGUI_CloseProcess, Close Process
 Gui, Add, Progress, w640 vGui_Progress
 Gui, Show,, WhoLockedMe
 
 GUI_FileLockTabCtrlEvt("Gui_Reload")
 
+; ==================================================================================================================================
+GuiClose(Hwnd){
+    ExitApp
+}
 ; ==================================================================================================================================
 GUI_FileLockTabCtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
    Static DataArray := []
@@ -36,7 +42,7 @@ GUI_FileLockTabCtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
          Data := DataArray[A_Index]
          FilePath := Data.FilePath ? Data.FilePath : Data.DevicePath
          If (InStr(FilePath, Gui_Filter))
-            LV_Add("Icon" . Data.Icon, FilePath, Data.ProcFullPath)
+            LV_Add("Icon" . Data.Icon, FilePath, Data.ProcName, Data.PID)
       }
       GuiControl, +Redraw, FileLockLV
    } Else If (ControlName = "GUI_Reload") {
@@ -54,6 +60,10 @@ GUI_FileLockTabCtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
          DataArray[A_Index].Icon := IL_Add(ImageListID, "HICON:" . GetIconByPath(DataArray[A_Index].FilePath))
       }
       GUI_FileLockTabCtrlEvt("Gui_Filter")
+   } Else If (ControlName = "GUI_CloseHandle") {
+      Msgbox, Not implemented yet! I'm working on it.
+   } Else If (ControlName = "GUI_CloseProcess") {
+      Msgbox, Not implemented yet! I'm working on it.
    }
 }
 ; ==================================================================================================================================
@@ -83,11 +93,11 @@ GetAllFileHandleInfo(Callback:="") {
       && (OTI.Type = "File")
       && (DllCall("GetFileType", "Ptr", hObject, "UInt") = 1)
       && (ONI := QueryObjectNameInformation(hObject)) {
-         VarSetCapacity(ProcName, 520, 0)
-         DllCall("QueryFullProcessImageName", "Ptr", hProc, "UInt", 0, "Str", ProcName, "UIntP", sz := 260)
+         VarSetCapacity(ProcFullPath, 520, 0)
+         DllCall("QueryFullProcessImageName", "Ptr", hProc, "UInt", 0, "Str", ProcFullPath, "UIntP", sz := 260)
          FilePath := GetPathNameByHandle(hObject)
          Data := {}
-         Data.ProcFullPath := ProcName
+         Data.ProcFullPath := ProcFullPath
          Data.PID := SHI[A_Index].PID
          Data.Handle := SHI[A_Index].Handle
          Data.GrantedAccess := SHI[A_Index].Access
@@ -98,6 +108,8 @@ GetAllFileHandleInfo(Callback:="") {
          Data.FilePath := FilePath
          Data.Drive := SubStr(FilePath, 1, 1)
          Data.Isfolder := InStr(FileExist(FilePath), "D") ? True : False
+         SplitPath, ProcFullPath, ProcName
+         Data.ProcName := ProcName
       
          ProgressInPercent := A_Index/HandleCount*100
          If Callback
@@ -111,10 +123,6 @@ GetAllFileHandleInfo(Callback:="") {
    If Callback
       Callback.Call(100)
    Return DataArray
-}
-; ==================================================================================================================================
-GuiClose(hwnd){
-    ExitApp
 }
 ; ==================================================================================================================================
 RunAsAdmin() {
