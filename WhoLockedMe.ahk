@@ -13,8 +13,8 @@ EnablePrivilege()
 File := FileOpen(A_ScriptFullPath, "r") ; cause this script to appear in the list
 ; ==================================================================================================================================
 Gui, Add, Edit, w640 r1 gGUI_FileLockTabCtrlEvt vGui_Filter
-Gui, Add, ListView, w640 r30 gGUI_FileLockTabCtrlEvt vFileLockLV +LV0x00000400, Potentially locked|By|PID
-LV_ModifyCol(1,419), LV_ModifyCol(2,150), LV_ModifyCol(3,50)
+Gui, Add, ListView, w640 r30 gGUI_FileLockTabCtrlEvt vFileLockLV +LV0x00000400, Potentially locked|By|PID|Handle
+LV_ModifyCol(1,419), LV_ModifyCol(2,150), LV_ModifyCol(3,50), LV_ModifyCol(4,0)
 Gui, Add, Button, w640 gGUI_FileLockTabCtrlEvt vGUI_Reload, Reload
 Gui, Add, Button, w640 gGUI_FileLockTabCtrlEvt vGUI_CloseHandle, Close Handle
 Gui, Add, Button, w640 gGUI_FileLockTabCtrlEvt vGUI_CloseProcess, Close Process
@@ -25,7 +25,7 @@ GUI_FileLockTabCtrlEvt("Gui_Reload")
 
 ; ==================================================================================================================================
 GuiClose(Hwnd){
-    ExitApp
+   ExitApp
 }
 ; ==================================================================================================================================
 GUI_FileLockTabCtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
@@ -43,7 +43,7 @@ GUI_FileLockTabCtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
          Data := DataArray[A_Index]
          FilePath := Data.FilePath ? Data.FilePath : Data.DevicePath
          If (InStr(FilePath, Gui_Filter))
-            LV_Add("Icon" Data.IconIndex, FilePath, Data.ProcName, Data.PID)
+            LV_Add("Icon" Data.IconIndex, FilePath, Data.ProcName, Data.PID, Data.Handle)
       }
       GuiControl, +Redraw, FileLockLV
    } Else If (ControlName = "GUI_Reload") {
@@ -63,12 +63,33 @@ GUI_FileLockTabCtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
          If IconObject[IconObjectId]
             DataArray[A_Index].IconIndex := IconObject[IconObjectId]
          Else
-            IconObject[IconObjectId] :=  DataArray[A_Index].IconIndex := IL_Add(ImageListID, "HICON:" . GetIconByPath(Data.FilePath), Data.FileExists)
+            IconObject[IconObjectId] :=  DataArray[A_Index].IconIndex := IL_Add(ImageListID, "HICON:" . GetIconByPath(Data.FilePath, Data.FileExists))
       }
       GUI_FileLockTabCtrlEvt("Gui_Filter")
    } Else If (ControlName = "GUI_CloseHandle") {
-      Msgbox, Not implemented yet! I'm working on it.
-      
+      ;RowNumber := 0
+      ;Loop {
+      ;   RowNumber := LV_GetNext(RowNumber)
+      ;   If !RowNumber
+      ;       Break
+      ;   LV_GetText(Handle, RowNumber, 4)
+      ;   HandleClosed := CloseHandle(Handle)
+      ;   If !HandleClosed {
+      ;      LV_GetText(Path, RowNumber, 1)
+      ;      LV_GetText(Name, RowNumber, 2)
+      ;      MsgBox, Error: Unable to close %Name%'s (PID: %PID%) handle on "%Path%"!
+      ;   } Else {
+      ;      i := 1
+      ;      Loop % DataArray.Length() {
+      ;         If (DataArray[i].Handle = Handle)
+      ;            DataArray.RemoveAt(i)
+      ;         Else
+      ;            i++
+      ;      }
+      ;      GUI_FileLockTabCtrlEvt("Gui_Filter")
+      ;   }
+      ;}
+      MsgBox, Disabled for security reasons. I'm working on it.
    } Else If (ControlName = "GUI_CloseProcess") {
       RowNumber := 0
       Loop {
@@ -108,6 +129,11 @@ LoadLibraries() {
 ; ==================================================================================================================================
 ; General functions that can simply be used in other scripts =======================================================================
 ; ==================================================================================================================================
+CloseHandle(handle) {
+   If !DllCall("CloseHandle", "ptr", handle)
+      Return A_LastError
+   Return 1
+}
 GetAllFileHandleInfo(Callback:="") {
    Static hCurrentProc := DllCall("GetCurrentProcess", "UPtr")
    DataArray := []
@@ -166,6 +192,11 @@ GetAllFileHandleInfo(Callback:="") {
 ; ==================================================================================================================================
 GetIconByPath(Path, FileExists:="") { ; fully qualified file path, result of FileExist on Path (optional)
    ; SHGetFileInfo  -> http://msdn.microsoft.com/en-us/library/bb762179(v=vs.85).aspx
+   ; FIXME:
+   ;    For 32-bit AHK File System Redirection is automatically enabled when running on a 64-bit OS. 
+   ;    So files which exist in Sytem32 (64-bit) but not in SysWOW64 (32-bit) won't be found. 
+   ;    Also, all files which exist in both directories might address the wrong file. 
+   ;    So the file redirection must be disabled in this case (A_Is64bitOS && (A_PtrSize = 4)).
    Static AW := A_IsUnicode ? "W" : "A"
    Static cbSFI := A_PtrSize + 8 + (340 << !!A_IsUnicode)
    Static IconType := 2
@@ -183,7 +214,8 @@ GetIconByPath(Path, FileExists:="") { ; fully qualified file path, result of Fil
       }
    } Else ; If the file is deleted reutrn an appropriate icon. 
       Return LoadPicture(A_WinDir "\System32\imageres.dll", "Icon85 w16 h16", IconType) ; TODO: find a way to retrieve the icon just once and return it everytime it is needed
-   
+      ;TODO: maybe remove this because other scripts might not want to get this icon when the file is not existent
+      
    VarSetCapacity(SFI, cbSFI, 0) ; SHFILEINFO
    DllCall("Shell32.dll\SHGetFileInfo" . AW, "Str", pszPath, "UInt", dwFileAttributes, "Ptr", &SFI, "UInt", cbSFI, "UInt", uFlags, "UInt")
    Return NumGet(SFI, 0, "UPtr")
