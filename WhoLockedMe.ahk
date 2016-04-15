@@ -75,7 +75,7 @@ GUI_FileLockTabCtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
          If !RowNumber
              Break
          LV_GetText(PID, RowNumber, 3)
-         Process, WaitClose, %PID%, 5 ;wait up to 5 secs until proc closes
+         Process, WaitClose, %PID%, 5 ;wait up to 5 secs until process closes
          If !ErrorLevel {
             Loop % DataArray.Length() {
                If (DataArray[A_Index].PID = PID)
