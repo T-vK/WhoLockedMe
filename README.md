@@ -4,7 +4,7 @@
  * Credits to HotkeyIt for the super complicated handle retrievement!
  * Credits to jNizM for the neat QueryDosDevice function!
  * Credits to Lexikos and "just me" for the GetIconGroupNameByIndex fucntion!
- * Credits to "just me" for translating the whole script into AHK 1.1!
+ * Credits to "just me" for translating the whole script into AHK 1.1 and also for GetPathNameByHandle and GetIconByPath!
  * If I forgot to put *your* name into this list, tell me please!
  
 #### Links

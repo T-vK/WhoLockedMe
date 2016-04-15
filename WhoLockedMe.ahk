@@ -2,8 +2,8 @@
 ; https://autohotkey.com/boards/viewtopic.php?p=80447
 ; Credits to HotkeyIt for the super complicated handle retrievement!
 ; Credits to jNizM for the neat QueryDosDevice function!
-; Credits to Lexikos and "just me" for the GetIconGroupNameByIndex function!
-; Credits to "just me" for translating the whole script into AHK 1.1!
+; Credits to "just me" for translating the whole script into AHK 1.1 and also for GetPathNameByHandle and GetIconByPath!
+; If I forgot to put *your* name into this list, tell me please!
 
 #NoEnv
 SetBatchLines, -1
@@ -45,7 +45,6 @@ Gui_Reload() {
    LV_Delete()
    If (ImageListID)
       IL_Destroy(ImageListId)
-   ExtIcons := []
    ImageListID := IL_Create(1000, 100)
    IL_Add(ImageListID, "imageres.dll", 3) ; icon 1 = default
    IL_Add(ImageListID, "shell32.dll", 5)  ; icon 2 = folder
@@ -86,28 +85,9 @@ Gui_Reload() {
          Data.DevicePath := ONI.Name
          Data.FilePath := FilePath
          Data.Drive := SubStr(FilePath, 1, 1)
-         Data.Isfolder := InStr(FileExist(Data.FilePath), "D") ? True : False
-         SplitPath, FilePath, , , FileExt
-         If (Data.Isfolder)
-            Data.Icon := 2
-         Else If (FileExt = "exe") {
-            If GetIconGroupNameByIndex(Data.FilePath, 1)
-               Data.Icon := IL_Add(ImageListID, Data.FilePath, 0)
-            Else
-               Data.Icon := IL_Add(ImageListID, "imageres.dll", 12)
-         }
-         Else If (FileExt) {
-            If ExtIcons[FileExt]
-               Data.Icon := ExtIcons[FileExt]
-            Else {
-               icon := GetIconByExt(FileExt)
-               If (icon.file)
-                  ExtIcons[FileExt] := Data.Icon := IL_Add(ImageListID, icon.file, icon.index)
-               Else
-                  Data.Icon := 1
-            }
-         } Else
-            Data.Icon := 1
+         Data.Isfolder := InStr(FileExist(FilePath), "D") ? True : False
+         Data.Icon := IL_Add(ImageListID, "HICON:" . GetIconByPath(Data.FilePath))
+         
          DataArray.Push(Data)
       }
       DllCall("CloseHandle", "Ptr", hObject)
@@ -155,64 +135,30 @@ GetPathNameByHandle(hFile) {
    Return SubStr(FilePath, 1, 4) = "\\?\" ? SubStr(FilePath, 5) : FilePath
 }
 ; ==================================================================================================================================
-;GetIconByExt(Ext) { ; pass the extension without the leading dot
-;   ; SHGetFileInfo  -> http://msdn.microsoft.com/en-us/library/bb762179(v=vs.85).aspx
-;   Static AW := A_IsUnicode ? "W" : "A"
-;   Static cbSFI := A_PtrSize + 8 + (340 << !!A_IsUnicode)
-;   VarSetCapacity(SFI, cbSFI, 0) ; SHFILEINFO
-;   DllCall("Shell32.dll\SHGetFileInfo" . AW, "Str", "." . Ext, "UInt", 0x80, "Ptr", &SFI, "UInt", cbSFI, "UInt", 0x0111, "UInt")
-;   Return NumGet(SFI, 0, "UPtr")
-;}
-GetIconByExt(ext) {
-   RegRead, from, % "HKEY_CLASSES_ROOT\." ext
-   RegRead, defaultIcon, % "HKEY_CLASSES_ROOT\" from "\DefaultIcon"
-   defaultIcon := StrReplace(defaultIcon, """", "")
-   defaultIcon := StrReplace(defaultIcon, "`%SystemRoot`%", A_WinDir)
-   defaultIcon := StrReplace(defaultIcon, "`%ProgramFiles`%", A_ProgramFiles)
-   defaultIcon := StrReplace(defaultIcon, "`%windir`%", A_WinDir)
-   defaultIconSplit := StrSplit(defaultIcon,",")
-   resFile := defaultIconSplit[1]
-   index := defaultIconSplit[2]
-   ;index := (index < 0 ? abs(index)-4 : index)
-   Return {file: resFile, index: index}
-}
-; ==================================================================================================================================
-GetIconGroupNameByIndex(FilePath, Index, NamePtr := "", Param := "") {
-   ; Credits to lexikos and "just me" for that function
-   ; https://autohotkey.com/boards/viewtopic.php?p=49057#p49057
-   Static EnumProc := RegisterCallback("GetIconGroupNameByIndex", "F", 4)
-   Static EnumCall := A_TickCount
-   Static EnumCount := 0
-   Static GroupIndex := 0
-   Static GroupName := ""
-   Static Loaded := 0
-   ; ----------------------------------------------------------------------------------------------
-   If (Param = EnumCall) { ; called by EnumResourceNames
-      EnumCount++
-      If (EnumCount = GroupIndex) {
-         If ((NamePtr & 0xFFFF) = NamePtr)
-            GroupName := NamePtr
-         Else
-            GroupName := StrGet(NamePtr)
-         Return False
+GetIconByPath(Path) { ; fully qualified file path
+   ; SHGetFileInfo  -> http://msdn.microsoft.com/en-us/library/bb762179(v=vs.85).aspx
+   ; FIXME: when running as 32bit some icons are blank
+   Static AW := A_IsUnicode ? "W" : "A"
+   Static cbSFI := A_PtrSize + 8 + (340 << !!A_IsUnicode)
+   Static DelIconHandle := LoadPicture(A_WinDir "\System32\imageres.dll", "Icon85 w16 h16") ; red X icon
+   FileExists := FileExist(Path)
+   If (FileExists) {
+      If (InStr(FileExists, "D") || FileExt = "exe" || FileExt = "ico") {
+         pszPath := Path
+         dwFileAttributes := 0x00
+         uFlags := 0x0101
+      } Else {
+         SplitPath, Path, , , FileExt
+         pszPath := FileExt ? "." FileExt : ""
+         dwFileAttributes := 0x80
+         uFlags := 0x0111
       }
-      Return True
-   }
-   ; ----------------------------------------------------------------------------------------------
-   EnumCount := 0
-   GroupIndex := Index
-   GroupName := ""
-   Loaded := 0
-   If !(HMOD := DllCall("GetModuleHandle", "Str", FilePath, "UPtr")) {
-      If (HMOD := DllCall("LoadLibraryEx", "Str", FilePath, "Ptr", 0, "UInt", 0x02, "UPtr"))
-         Loaded := HMOD
-      Else
-         Return ""
-   }
-   DllCall("EnumResourceNames", "Ptr", HMOD, "Ptr", 14, "Ptr", EnumProc, "Ptr", EnumCall)
-   If (Loaded)
-      DllCall("FreeLibrary", "Ptr", Loaded)
-   Return GroupName
+   } Else ; If the file is deleted reutrn an appropriate icon. 
+      Return DelIconHandle ; FIXME: always returns blank icon
+   
+   VarSetCapacity(SFI, cbSFI, 0) ; SHFILEINFO
+   DllCall("Shell32.dll\SHGetFileInfo" . AW, "Str", pszPath, "UInt", dwFileAttributes, "Ptr", &SFI, "UInt", cbSFI, "UInt", uFlags, "UInt")
+   Return NumGet(SFI, 0, "UPtr")
 }
 ; ==================================================================================================================================
 DuplicateObject(hProc, hCurrentProc, Handle, Options) {
