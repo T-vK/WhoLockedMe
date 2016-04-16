@@ -1,5 +1,11 @@
 ## WhoLockedMe
 
+#### What does it do?
+This tool shows you a list of all files that are currently being used by any process.  
+Using the instant filter you can easily find out what is responsible for locking a file,
+disallowing you to delete it or even to eject a certain USB device.
+Using this tool you can now easily find files/folders that are being locked and release them with a click of a button.
+
 #### Credits
  * Credits to HotkeyIt for the super complicated handle retrievement!
  * Credits to jNizM for the neat QueryDosDevice function!
@@ -18,7 +24,6 @@ If you just want to test it you can download the compiled version. (See link bel
 
 #### Future ideas include:
 - only show handles that are definitely locking a file
-- option to force a process to release a certain handle
 - option to close all handles responsible for keeping a device from ejecting
 - another tab that shows which process is responsible for blocking which port
 - option to force a process to stop listenting on a certain port

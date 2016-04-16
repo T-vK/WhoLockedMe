@@ -14,7 +14,7 @@ File := FileOpen(A_ScriptFullPath, "r") ; cause this script to appear in the lis
 ; ==================================================================================================================================
 Gui, Add, Edit, w640 r1 gGUI_FileLockTabCtrlEvt vGui_Filter
 Gui, Add, ListView, w640 r30 gGUI_FileLockTabCtrlEvt vFileLockLV +LV0x00000400, Potentially locked|By|PID|Handle
-LV_ModifyCol(1,419), LV_ModifyCol(2,150), LV_ModifyCol(3,50), LV_ModifyCol(4,0)
+LV_ModifyCol(1,369), LV_ModifyCol(2,150), LV_ModifyCol(3,50), LV_ModifyCol(4,50)
 Gui, Add, Button, w640 gGUI_FileLockTabCtrlEvt vGUI_Reload, Reload
 Gui, Add, Button, w640 gGUI_FileLockTabCtrlEvt vGUI_CloseHandle, Close Handle
 Gui, Add, Button, w640 gGUI_FileLockTabCtrlEvt vGUI_CloseProcess, Close Process
@@ -67,29 +67,32 @@ GUI_FileLockTabCtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
       }
       GUI_FileLockTabCtrlEvt("Gui_Filter")
    } Else If (ControlName = "GUI_CloseHandle") {
-      ;RowNumber := 0
-      ;Loop {
-      ;   RowNumber := LV_GetNext(RowNumber)
-      ;   If !RowNumber
-      ;       Break
-      ;   LV_GetText(Handle, RowNumber, 4)
-      ;   HandleClosed := CloseHandle(Handle)
-      ;   If !HandleClosed {
-      ;      LV_GetText(Path, RowNumber, 1)
-      ;      LV_GetText(Name, RowNumber, 2)
-      ;      MsgBox, Error: Unable to close %Name%'s (PID: %PID%) handle on "%Path%"!
-      ;   } Else {
-      ;      i := 1
-      ;      Loop % DataArray.Length() {
-      ;         If (DataArray[i].Handle = Handle)
-      ;            DataArray.RemoveAt(i)
-      ;         Else
-      ;            i++
-      ;      }
-      ;      GUI_FileLockTabCtrlEvt("Gui_Filter")
-      ;   }
-      ;}
-      MsgBox, Disabled for security reasons. I'm working on it.
+      RowNumber := 0
+      Loop {
+         RowNumber := LV_GetNext(RowNumber)
+         If !RowNumber
+             Break
+         LV_GetText(Handle, RowNumber, 4)
+         LV_GetText(PID, RowNumber, 3)
+         
+         ProcHandle := OpenProcess(PID, 0x40)
+         HandleClosed := DuplicateObject(ProcHandle, 0, Handle, 0x1) ; Close handle
+         
+         If HandleClosed {
+            LV_GetText(Path, RowNumber, 1)
+            LV_GetText(Name, RowNumber, 2)
+            MsgBox, Error: Unable to close %Name%'s (PID: %PID%) handle on "%Path%"!
+         } Else {
+            i := 1
+            Loop % DataArray.Length() {
+               If (DataArray[i].Handle = Handle)
+                  DataArray.RemoveAt(i)
+               Else
+                  i++
+            }
+         }
+      }
+      GUI_FileLockTabCtrlEvt("Gui_Filter")
    } Else If (ControlName = "GUI_CloseProcess") {
       RowNumber := 0
       Loop {
@@ -110,9 +113,9 @@ GUI_FileLockTabCtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
                Else
                   i++
             }
-            GUI_FileLockTabCtrlEvt("Gui_Filter")
          ;}
       }
+      GUI_FileLockTabCtrlEvt("Gui_Filter")
    }
 }
 ; ==================================================================================================================================
@@ -129,11 +132,43 @@ LoadLibraries() {
 ; ==================================================================================================================================
 ; General functions that can simply be used in other scripts =======================================================================
 ; ==================================================================================================================================
-CloseHandle(handle) {
-   If !DllCall("CloseHandle", "ptr", handle)
-      Return A_LastError
-   Return 1
+SetScrollInfo(hwnd, ScrollInfoObj, fnBar:=1, fRedraw:=True) {
+   ; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787583%28v=vs.85%29.aspx
+   VarSetCapacity(SCROLLINFO, ScrollInfoObj.Size, 0)
+   NumPut(ScrollInfoObj.Size, SCROLLINFO, 0, "UInt") 
+   NumPut(ScrollInfoObj.Mask, SCROLLINFO, 4, "UInt")
+   NumPut(ScrollInfoObj.Min, SCROLLINFO, 8, "Int")
+   NumPut(ScrollInfoObj.Max, SCROLLINFO, 12, "Int")
+   NumPut(ScrollInfoObj.Page, SCROLLINFO, 16, "UInt")
+   NumPut(ScrollInfoObj.Pos, SCROLLINFO, 20, "Int")
+   NumPut(ScrollInfoObj.TrackPos, SCROLLINFO, 24, "Int")
+   Return DllCall("User32.dll\SetScrollInfo", "Ptr", hwnd, "Int", fnBar, "Ptr", &SCROLLINFO)
 }
+; ==================================================================================================================================
+GetScrollInfo(hwnd, fnBar:=1) {
+   ; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787583%28v=vs.85%29.aspx
+   VarSetCapacity(SCROLLINFO, 28, 0)
+   NumPut(28, SCROLLINFO, 0, "UInt") 
+   NumPut(0x1F, SCROLLINFO, 4, "UInt") ; SIF_ALL
+   If !DllCall("User32.dll\GetScrollInfo", "Ptr", hwnd, "Int", fnBar, "Ptr", &SCROLLINFO)
+      Return False
+
+   ScrollInfoObj := {}
+   ScrollInfoObj.Size := NumGet(SCROLLINFO, 0, "UInt")
+   ScrollInfoObj.Mask := NumGet(SCROLLINFO, 4, "UInt")
+   ScrollInfoObj.Min := NumGet(SCROLLINFO, 8, "Int")
+   ScrollInfoObj.Max := NumGet(SCROLLINFO, 12, "Int")
+   ScrollInfoObj.Page := NumGet(SCROLLINFO, 16, "UInt")
+   ScrollInfoObj.Pos  := NumGet(SCROLLINFO, 20, "Int")
+   ScrollInfoObj.TrackPos := NumGet(SCROLLINFO, 24, "Int")
+
+   Return ScrollInfoObj
+}
+; ==================================================================================================================================
+OpenProcess(PID := 0, Privileges := -1) {
+   Return DllCall("OpenProcess", "Uint", (Privileges = -1) ? 0x1F0FFF|0x0400 : Privileges, "Uint", False, "Uint", PID ? PID : DllCall("GetCurrentProcessId"))
+} 
+; ==================================================================================================================================
 GetAllFileHandleInfo(Callback:="") {
    Static hCurrentProc := DllCall("GetCurrentProcess", "UPtr")
    DataArray := []
@@ -221,6 +256,12 @@ GetIconByPath(Path, FileExists:="") { ; fully qualified file path, result of Fil
    Return NumGet(SFI, 0, "UPtr")
 }
 ; ==================================================================================================================================
+GetPathNameByHandle(hFile) {
+   VarSetCapacity(FilePath, 4096, 0)
+   DllCall("GetFinalPathNameByHandle", "Ptr", hFile, "Str", FilePath, "UInt", 2048, "UInt", 0, "UInt")
+   Return SubStr(FilePath, 1, 4) = "\\?\" ? SubStr(FilePath, 5) : FilePath
+}
+; ==================================================================================================================================
 DuplicateObject(hProc, hCurrentProc, Handle, Options) {
    ; PROCESS_DUP_HANDLE = 0x40, PROCESS_QUERY_INFORMATION = 0x400, DUPLICATE_SAME_ATTRIBUTES = 0x04 (4)
    Status := DllCall("Ntdll.dll\ZwDuplicateObject", "Ptr", hProc
@@ -232,12 +273,6 @@ DuplicateObject(hProc, hCurrentProc, Handle, Options) {
                                                   , "UInt", Options
                                                   , "UInt")
    Return (Status) ? !(ErrorLevel := Status) : hObject
-}
-; ==================================================================================================================================
-GetPathNameByHandle(hFile) {
-   VarSetCapacity(FilePath, 4096, 0)
-   DllCall("GetFinalPathNameByHandle", "Ptr", hFile, "Str", FilePath, "UInt", 2048, "UInt", 0, "UInt")
-   Return SubStr(FilePath, 1, 4) = "\\?\" ? SubStr(FilePath, 5) : FilePath
 }
 ; ==================================================================================================================================
 QueryObjectBasicInformation(hObject) {
