@@ -31,7 +31,7 @@ If you just want to test it you can download the compiled version. (See link bel
 - smaller buttons
 
 #### Downloads
-[Download latest version of the script](WhoLockedMe.ahk?raw=true)
+[Download latest version of the script](WhoLockedMe.ahk?raw=true)  
 [Downlaod compiled 32bit version](WhoLockedMe.exe?raw=true)  
 [Downlaod compiled 64bit version](WhoLockedMe_64bit.exe?raw=true)  
 [Downlaod reporsitory](https://github.com/T-vK/WhoLockedMe/archive/master.zip)
