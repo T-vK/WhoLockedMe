@@ -1,9 +1,13 @@
-; http://forums.codeguru.com/showthread.php?176997.html
-; https://autohotkey.com/boards/viewtopic.php?p=80447
-; Credits to HotkeyIt for the super complicated handle retrievement!
-; Credits to jNizM for the neat QueryDosDevice function!
-; Credits to "just me" for translating the whole script into AHK 1.1 and also for GetPathNameByHandle and GetIconByPath!
-; If I forgot to put *your* name into this list, tell me please!
+;#### Credits
+; * Credits to HotkeyIt for the super complicated handle retrievement!
+; * Credits to jNizM for the neat QueryDosDevice function!
+; * Credits to "just me" for translating all the handle retrievement stuff into AHK 1.1 and also for GetPathNameByHandle and GetIconByPath!
+; * If *your* name or someone elses is missing from this list, tell me please!
+; 
+;#### Links
+; * [Development topic on autohotkey.com](https://autohotkey.com/boards/viewtopic.php?p=80447)
+; * [Release topic on autohotkey.com](https://autohotkey.com/boards/viewtopic.php?p=80455)
+; * [The C++ code that has been translated to AHK code for the handle retrievement](http://forums.codeguru.com/showthread.php?176997.html)
 
 #NoEnv
 SetBatchLines, -1

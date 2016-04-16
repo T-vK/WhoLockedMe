@@ -11,9 +11,8 @@ It now also shows which process is blocking which port.
 #### Credits
  * Credits to HotkeyIt for the super complicated handle retrievement!
  * Credits to jNizM for the neat QueryDosDevice function!
- * Credits to Lexikos and "just me" for the GetIconGroupNameByIndex fucntion!
- * Credits to "just me" for translating the whole script into AHK 1.1 and also for GetPathNameByHandle and GetIconByPath!
- * If I forgot to put *your* name into this list, tell me please!
+ * Credits to "just me" for translating all the handle retrievement stuff into AHK 1.1 and also for GetPathNameByHandle and GetIconByPath!
+ * If *your* name or someone elses is missing from this list, tell me please!
  
 #### Links
  * [Development topic on autohotkey.com](https://autohotkey.com/boards/viewtopic.php?p=80447)
@@ -27,6 +26,7 @@ If you just want to test it you can download the compiled version. (See link bel
 #### Future ideas include:
 - only show handles that are definitely locking a file
 - in the network port tab, show more info like IP addresses and remote ports
+- also show udp ports, not only tcp
 - option to force a process to stop listenting on a certain port
 - context menu for the listview
 - smaller buttons
