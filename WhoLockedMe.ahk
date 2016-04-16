@@ -12,52 +12,74 @@ LoadLibraries()
 EnablePrivilege()
 File := FileOpen(A_ScriptFullPath, "r") ; cause this script to appear in the list
 ; ==================================================================================================================================
-Gui, Add, Edit, w640 r1 gGUI_FileLockTabCtrlEvt vGui_Filter
-Gui, Add, ListView, w640 r30 gGUI_FileLockTabCtrlEvt vFileLockLV +LV0x00000400, Potentially locked|By|PID|Handle
-LV_ModifyCol(1,369), LV_ModifyCol(2,150), LV_ModifyCol(3,50), LV_ModifyCol(4,50)
-Gui, Add, Button, w640 gGUI_FileLockTabCtrlEvt vGUI_Reload, Reload
-Gui, Add, Button, w640 gGUI_FileLockTabCtrlEvt vGUI_CloseHandle, Close Handle
-Gui, Add, Button, w640 gGUI_FileLockTabCtrlEvt vGUI_CloseProcess, Close Process
-Gui, Add, Progress, w640 vGui_Progress
+Gui, Add, Tab2, w644 h627, File Handles|Network Ports
+Gui, Tab, 1
+   Gui, Add, Edit, w620 r1 gGui_FileHandles_CtrlEvt vGui_FileHandles_ApplyFilter
+   Gui, Add, ListView, w620 r25 gGui_FileHandles_CtrlEvt vGui_FileHandles_LV +LV0x00000400, Potentially locked|By|PID|Handle
+   LV_ModifyCol(1,349), LV_ModifyCol(2,150), LV_ModifyCol(3,50), LV_ModifyCol(4,50)
+   Gui, Add, Button, w620 gGui_FileHandles_CtrlEvt vGui_FileHandles_ReloadData, Reload
+   Gui, Add, Button, w620 gGui_FileHandles_CtrlEvt vGui_FileHandles_CloseHandle, Close Handle
+   Gui, Add, Button, w620 gGui_FileHandles_CtrlEvt vGui_FileHandles_CloseProcess, Close Process
+   Gui, Add, Progress, w620 vGui_FileHandles_ProgressBar
+Gui, Tab, 2
+   Gui, Add, Edit, w620 r1 gGui_NetworkPorts_CtrlEvt vGui_NetworkPorts_ApplyFilter
+   Gui, Add, ListView, w620 r25 gGui_NetworkPorts_CtrlEvt vGui_NetworkPorts_LV +LV0x00000400, Port blocked|By|PID
+   LV_ModifyCol(1,80), LV_ModifyCol(2,200), LV_ModifyCol(3,50)
+   ; TODO: Add columns for remote port and IP addresses
+   Gui, Add, Button, w620 gGui_NetworkPorts_CtrlEvt vGui_NetworkPorts_ReloadData, Reload
+   Gui, Add, Button, w620 gGui_NetworkPorts_CtrlEvt vGui_NetworkPorts_ReleasePort, Release Port
+   Gui, Add, Button, w620 gGui_NetworkPorts_CtrlEvt vGui_NetworkPorts_CloseProcess, Close Process
+   Gui, Add, Progress, w620 vGui_NetworkPorts_ProgressBar
 Gui, Show,, WhoLockedMe
 
-GUI_FileLockTabCtrlEvt("Gui_Reload")
+Gui_FileHandles_CtrlEvt("Gui_FileHandles_ReloadData")
+Gui_NetworkPorts_CtrlEvt("Gui_NetworkPorts_ReloadData")
+
 
 ; ==================================================================================================================================
-GuiClose(Hwnd){
-   ExitApp
-}
-; ==================================================================================================================================
-GUI_FileLockTabCtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
+Gui_NetworkPorts_CtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
    Static DataArray := []
    Static IconObject := {}
    Static ImageListID := 0
-   If (A_DefaultListView != "FileLockLV")
-      Gui, ListView, FileLockLV
+   If (A_DefaultListView != "Gui_NetworkPorts_LV")
+      Gui, ListView, Gui_NetworkPorts_LV
    GuiControlGet, ControlName, Name, %CtrlHwnd%
-   If (ControlName = "Gui_Filter") {
-      GuiControlGet, Gui_Filter
+   If (ControlName = "Gui_NetworkPorts_ApplyFilter") {
+      GuiControlGet, Gui_NetworkPorts_ApplyFilter
       LV_Delete()
-      GuiControl, -Redraw, FileLockLV
+      GuiControl, -Redraw, Gui_NetworkPorts_LV
       Loop % DataArray.Length() {
          Data := DataArray[A_Index]
-         FilePath := Data.FilePath ? Data.FilePath : Data.DevicePath
-         If (InStr(FilePath, Gui_Filter))
-            LV_Add("Icon" Data.IconIndex, FilePath, Data.ProcName, Data.PID, Data.Handle)
+         Port := Data.LocalPort
+         If (InStr(Port, Gui_NetworkPorts_ApplyFilter))
+            LV_Add("Icon" Data.IconIndex, Data.LocalPort, Data.ProcName, Data.PID)
       }
-      GuiControl, +Redraw, FileLockLV
-   } Else If (ControlName = "GUI_Reload") {
+      GuiControl, +Redraw, Gui_NetworkPorts_LV
+   } Else If (ControlName = "Gui_NetworkPorts_ReloadData") {
       LV_Delete()
       If (ImageListID)
          IL_Destroy(ImageListID)
-      ImageListID := IL_Create(1000, 100)
+      ImageListID := IL_Create(100, 10)
       LV_SetImageList(ImageListID)
-      Callback := Func("FileHandleCallback")
-      DataArray := GetAllFileHandleInfo(Callback)
-      GuiControl, , Gui_Progress, 0
+      GuiControl, , Gui_NetworkPorts_ProgressBar, 0
+      DataArray := GetExtendedTcpTable()
       DataArrayCount := DataArray.Length()
       Loop % DataArrayCount {
-         GuiControl, , Gui_Progress, % A_Index/DataArrayCount*100
+         GuiControl, , Gui_NetworkPorts_ProgressBar, % A_Index/DataArrayCount*100
+         
+         If (DataArray[A_Index].PID = 0)
+            DataArray[A_Index].ProcName := "[System Process]"
+         Else If (DataArray[A_Index].PID = 4)
+            DataArray[A_Index].ProcName := "System"
+         Else {
+            DataArray[A_Index].FilePath := GetProcessFilePath(DataArray[A_Index].PID)
+            SplitPath, % DataArray[A_Index].FilePath, ProcessName
+            If !ProcessName
+                WinGet, ProcessName, ProcessName, % "ahk_pid " DataArray[A_Index].PID
+            ; TODO: find out why that's still not enough to get them all
+            DataArray[A_Index].ProcName := ProcessName
+            DataArray[A_Index].Exists := FileExist(DataArray[A_Index].FilePath)
+         }
          Data := DataArray[A_Index]
          IconObjectId := Data.Exists ? Data.FilePath : "\\DELETED"
          If IconObject[IconObjectId]
@@ -65,8 +87,96 @@ GUI_FileLockTabCtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
          Else
             IconObject[IconObjectId] :=  DataArray[A_Index].IconIndex := IL_Add(ImageListID, "HICON:" . GetIconByPath(Data.FilePath, Data.FileExists))
       }
-      GUI_FileLockTabCtrlEvt("Gui_Filter")
-   } Else If (ControlName = "GUI_CloseHandle") {
+      Gui_NetworkPorts_CtrlEvt("Gui_NetworkPorts_ApplyFilter")
+   } Else If (ControlName = "Gui_NetworkPorts_ReleasePort") {
+      ;RowNumber := 0
+      ;Loop {
+      ;   RowNumber := LV_GetNext(RowNumber)
+      ;   If !RowNumber
+      ;       Break
+      ;   LV_GetText(Port, RowNumber, 1)
+      ;   LV_GetText(PID, RowNumber, 3)
+      ;   
+      ;   If PortClosed {
+      ;      LV_GetText(Name, RowNumber, 2)
+      ;      MsgBox, Error: Unable to release port %Port% used by %Name% (PID: %PID%)!
+      ;   } Else {
+      ;      i := 1
+      ;      Loop % DataArray.Length() {
+      ;         If (DataArray[i].Handle = Handle)
+      ;            DataArray.RemoveAt(i)
+      ;         Else
+      ;            i++
+      ;      }
+      ;   }
+      ;}
+      ;Gui_NetworkPorts_CtrlEvt("Gui_NetworkPorts_ApplyFilter")
+      MsgBox, Not implemented yet!
+   } Else If (ControlName = "Gui_NetworkPorts_CloseProcess") {
+      RowNumber := 0
+      Loop {
+         RowNumber := LV_GetNext(RowNumber)
+         If !RowNumber
+             Break
+         LV_GetText(PID, RowNumber, 3)
+         Process, Close, %PID%
+         ;Process, WaitClose, %PID%, 5 ;wait up to 5 secs until process closes
+         ;If ErrorLevel {
+         ;   LV_GetText(Name, RowNumber, 2)
+         ;   MsgBox, Error: Unable to close %Name% (PID: %PID%)!
+         ;Else {
+            i := 1
+            Loop % DataArray.Length() {
+               If (DataArray[i].PID = PID)
+                  DataArray.RemoveAt(i)
+               Else
+                  i++
+            }
+         ;}
+      }
+      Gui_NetworkPorts_CtrlEvt("Gui_NetworkPorts_ApplyFilter")
+   }
+}
+; ==================================================================================================================================
+Gui_FileHandles_CtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
+   Static DataArray := []
+   Static IconObject := {}
+   Static ImageListID := 0
+   If (A_DefaultListView != "Gui_FileHandles_LV")
+      Gui, ListView, Gui_FileHandles_LV
+   GuiControlGet, ControlName, Name, %CtrlHwnd%
+   If (ControlName = "Gui_FileHandles_ApplyFilter") {
+      GuiControlGet, Gui_FileHandles_ApplyFilter
+      LV_Delete()
+      GuiControl, -Redraw, Gui_FileHandles_LV
+      Loop % DataArray.Length() {
+         Data := DataArray[A_Index]
+         FilePath := Data.FilePath ? Data.FilePath : Data.DevicePath
+         If (InStr(FilePath, Gui_FileHandles_ApplyFilter))
+            LV_Add("Icon" Data.IconIndex, FilePath, Data.ProcName, Data.PID, Data.Handle)
+      }
+      GuiControl, +Redraw, Gui_FileHandles_LV
+   } Else If (ControlName = "Gui_FileHandles_ReloadData") {
+      LV_Delete()
+      If (ImageListID)
+         IL_Destroy(ImageListID)
+      ImageListID := IL_Create(1000, 100)
+      LV_SetImageList(ImageListID)
+      Callback := Func("FileHandleCallback")
+      DataArray := GetAllFileHandleInfo(Callback)
+      GuiControl, , Gui_FileHandles_ProgressBar, 0
+      DataArrayCount := DataArray.Length()
+      Loop % DataArrayCount {
+         GuiControl, , Gui_FileHandles_ProgressBar, % A_Index/DataArrayCount*100
+         Data := DataArray[A_Index]
+         IconObjectId := Data.Exists ? Data.FilePath : "\\DELETED"
+         If IconObject[IconObjectId]
+            DataArray[A_Index].IconIndex := IconObject[IconObjectId]
+         Else
+            IconObject[IconObjectId] :=  DataArray[A_Index].IconIndex := IL_Add(ImageListID, "HICON:" . GetIconByPath(Data.FilePath, Data.FileExists))
+      }
+      Gui_FileHandles_CtrlEvt("Gui_FileHandles_ApplyFilter")
+   } Else If (ControlName = "Gui_FileHandles_CloseHandle") {
       RowNumber := 0
       Loop {
          RowNumber := LV_GetNext(RowNumber)
@@ -92,8 +202,8 @@ GUI_FileLockTabCtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
             }
          }
       }
-      GUI_FileLockTabCtrlEvt("Gui_Filter")
-   } Else If (ControlName = "GUI_CloseProcess") {
+      Gui_FileHandles_CtrlEvt("Gui_FileHandles_ApplyFilter")
+   } Else If (ControlName = "Gui_FileHandles_CloseProcess") {
       RowNumber := 0
       Loop {
          RowNumber := LV_GetNext(RowNumber)
@@ -115,22 +225,69 @@ GUI_FileLockTabCtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
             }
          ;}
       }
-      GUI_FileLockTabCtrlEvt("Gui_Filter")
+      Gui_FileHandles_CtrlEvt("Gui_FileHandles_ApplyFilter")
    }
 }
 ; ==================================================================================================================================
 FileHandleCallback(PercentDone) {
-   GuiControl, , Gui_Progress, %PercentDone%
+   GuiControl, , Gui_FileHandles_ProgressBar, %PercentDone%
 }
 ; ==================================================================================================================================
 LoadLibraries() {
    DllCall("LoadLibrary", "Str", "Advapi32.dll", "UPtr")
    DllCall("LoadLibrary", "Str", "Ntdll.dll", "UPtr")
    DllCall("LoadLibrary", "Str", "Shell32.dll", "UPtr")
+   DllCall("LoadLibrary", "Str", "Iphlpapi.dll", "UPtr")
+   DllCall("LoadLibrary", "Str", "psapi.dll", "UPtr")
+}
+; ==================================================================================================================================
+GuiClose(Hwnd){
+   ExitApp
 }
 
 ; ==================================================================================================================================
 ; General functions that can simply be used in other scripts =======================================================================
+; ==================================================================================================================================
+GetProcessFilePath(PID) {
+   hProcess := DllCall("OpenProcess", "UInt", 0x10|0x400, "UInt", 0, "UInt", PID, "UPtr")
+   nSize := 255
+   VarSetCapacity(lpFilename, nSize)
+   DllCall( "psapi.dll\GetModuleFileNameExW", "UInt", hProcess, "UInt", 0, "Str", lpFilename, "UInt", nSize)
+   DllCall("CloseHandle", hProcess)
+   Return lpFilename
+}
+; ==================================================================================================================================
+GetExtendedTcpTable() {
+   ; https://msdn.microsoft.com/en-us/library/aa365928.aspx
+   TCP_TABLE_OWNER_PID_ALL = 5 ; pTcpTable will be a MIB_TCPTABLE_OWNER_PID struct: https://msdn.microsoft.com/en-us/library/aa366921.aspx 
+   AF_INET = 2
+   VarSetCapacity(pdwSize, 4)
+   pTcpTableSize := VarSetCapacity(pTcpTable, 4) ;we could specify a really high number here to avoid calling the function twice
+   DllCall("Iphlpapi.dll\GetExtendedTcpTable", "UInt", &pTcpTable, "UInt", &pdwSize, "UInt", False, "UInt", AF_INET, "UInt", TCP_TABLE_OWNER_PID_ALL, "UInt", 0)
+   VarSetCapacity(pTcpTable, NumGet(pdwSize))
+   DllCall("Iphlpapi.dll\GetExtendedTcpTable", "UInt", &pTcpTable, "UInt", &pdwSize, "UInt", False, "UInt", AF_INET, "UInt", TCP_TABLE_OWNER_PID_ALL, "UInt", 0)
+   
+   dwNumEntries := NumGet(pTcpTable, 0, "UInt")
+   TcpTable := []
+   CurrentOffset := 0
+   Loop % dwNumEntries { ;Loop through the elements of the MIB_TCPROW_OWNER_PID table (array)
+       Tcp := {}
+       CurrentOffset += 4
+       Tcp.State := NumGet(pTcpTable, CurrentOffset, "UInt")
+       CurrentOffset += 4
+       Tcp.LocalAddr := NumGet(pTcpTable, CurrentOffset, "UInt")
+       CurrentOffset += 4
+       Tcp.LocalPort := NumGet(pTcpTable, CurrentOffset, "UInt")
+       CurrentOffset += 4
+       Tcp.RemoteAddr := NumGet(pTcpTable, CurrentOffset, "UInt")
+       CurrentOffset += 4
+       Tcp.RemotePort := NumGet(pTcpTable, CurrentOffset, "UInt")
+       CurrentOffset += 4
+       Tcp.PID := NumGet(pTcpTable, CurrentOffset, "UInt")
+       TcpTable.Push(Tcp)
+   }
+   Return TcpTable
+}
 ; ==================================================================================================================================
 SetScrollInfo(hwnd, ScrollInfoObj, fnBar:=1, fRedraw:=True) {
    ; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787583%28v=vs.85%29.aspx
@@ -166,7 +323,7 @@ GetScrollInfo(hwnd, fnBar:=1) {
 }
 ; ==================================================================================================================================
 OpenProcess(PID := 0, Privileges := -1) {
-   Return DllCall("OpenProcess", "Uint", (Privileges = -1) ? 0x1F0FFF|0x0400 : Privileges, "Uint", False, "Uint", PID ? PID : DllCall("GetCurrentProcessId"))
+   Return DllCall("OpenProcess", "Uint", (Privileges = -1) ? 0x1F0FFF : Privileges, "Uint", False, "Uint", PID ? PID : DllCall("GetCurrentProcessId"))
 } 
 ; ==================================================================================================================================
 GetAllFileHandleInfo(Callback:="") {
