@@ -41,3 +41,4 @@ If you just want to test it you can download the compiled version. (See link bel
 ![Screenshot](Screenshots/Screenshot1.png)
 ![Screenshot](Screenshots/Screenshot2.png)
 ![Screenshot](Screenshots/Screenshot3.png)
+![Screenshot](Screenshots/Screenshot4.png)
