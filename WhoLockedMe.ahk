@@ -93,7 +93,7 @@ Gui_NetworkPorts_CtrlEvt(CtrlHwnd:=0, GuiEvent:="", EventInfo:="", ErrLvl:="") {
             If IconObject[IconObjectId]
                 DataArray[A_Index].IconIndex := IconObject[IconObjectId]
             Else
-                IconObject[IconObjectId] :=  DataArray[A_Index].IconIndex := IL_Add(ImageListID, "HICON:" . GetIconByPath(Data.FilePath, Data.FileExists))
+                IconObject[IconObjectId] := DataArray[A_Index].IconIndex := IL_Add(ImageListID, "HICON:" . GetIconByPath(Data.FilePath, Data.FileExists))
         }
         Gui_NetworkPorts_CtrlEvt("Gui_NetworkPorts_ApplyFilter")
     } Else If (ControlName = "Gui_NetworkPorts_ReleasePort") {
@@ -339,9 +339,10 @@ GetAllFileHandleInfo(Callback:="") {
         Return False
     }
     HandleCount := SHI.Count
+    devicePathsObj := GetDevicePaths()
     Loop %HandleCount% {
         ; PROCESS_DUP_HANDLE = 0x40, PROCESS_QUERY_INFORMATION = 0x400
-        If !(hProc := DllCall("OpenProcess", "UInt", 0x0440, "UInt", 0, "UInt", SHI[A_Index, "PID"], "UPtr"))
+        If !(hProc := DllCall("OpenProcess", "UInt", 0x0400|0x40|0x10, "UInt", 0, "UInt", SHI[A_Index, "PID"], "UPtr"))
             Continue
         ; DUPLICATE_SAME_ATTRIBUTES = 0x04 (4)
         If !(hObject := DuplicateObject(hProc, hCurrentProc, SHI[A_Index, "Handle"], 4)) {
@@ -353,12 +354,11 @@ GetAllFileHandleInfo(Callback:="") {
         && (OTI.Type = "File")
         && (DllCall("GetFileType", "Ptr", hObject, "UInt") = 1)
         && (ONI := QueryObjectNameInformation(hObject)) {
-            ; VarSetCapacity(ProcFullPath, 520, 0)
-            ; DllCall("QueryFullProcessImageName", "Ptr", hProc, "UInt", 0, "Str", ProcFullPath, "UIntP", sz := 260) ; NOT COMPATIBLE WITH WINDOWS XP
+            VarSetCapacity(ProcFullPath, 520, 0)
+            DllCall("QueryFullProcessImageName", "Ptr", hProc, "UInt", 0, "Str", ProcFullPath, "UIntP", sz := 260) ; NOT COMPATIBLE WITH WINDOWS XP
             
-            FilePath := GetPathNameByHandle(hObject)
             Data := {}
-            Data.ProcFullPath := GetProcessFilePath(hProc)
+            Data.ProcFullPath := ProcFullPath ? ProcFullPath : GetProcessFilePath(hProc) ; For XP compatibility
             Data.PID := SHI[A_Index].PID
             Data.Handle := SHI[A_Index].Handle
             Data.GrantedAccess := SHI[A_Index].Access
@@ -366,6 +366,13 @@ GetAllFileHandleInfo(Callback:="") {
             Data.Attributes := OBI.Attr
             Data.HandleCount := (OBI.Handles - 1)
             Data.DevicePath := ONI.Name
+            
+            FilePath := GetPathNameByHandle(hObject) ; NOT COMPATIBLE WITH WINDOWS XP
+            
+            If (!FilePath) {  ; For XP compatibility
+                RegexMatch(Data.DevicePath, "OS)(^\\.+?\\.+?)(\\|$)", matches)
+                FilePath := StrReplace(Data.DevicePath,matches[1],devicePathsObj[matches[1]],o,1)
+            }
             Data.FilePath := FilePath
             Data.Drive := SubStr(FilePath, 1, 1)
             FileExists := FileExist(FilePath)
@@ -423,6 +430,21 @@ GetPathNameByHandle(hFile) {
     VarSetCapacity(FilePath, 4096, 0)
     DllCall("GetFinalPathNameByHandle", "Ptr", hFile, "Str", FilePath, "UInt", 2048, "UInt", 0, "UInt")
     Return SubStr(FilePath, 1, 4) = "\\?\" ? SubStr(FilePath, 5) : FilePath
+}
+; ==================================================================================================================================
+GetDevicePaths() {
+    DriveGet, driveLetters, List
+    driveLetters := StrSplit(driveLetters)
+    devicePaths := {}
+    Loop % driveLetters.MaxIndex()
+        devicePaths[QueryDosDevice(driveLetters[A_Index] ":")] := driveLetters[A_Index] ":"
+    Return devicePaths
+}
+; ==================================================================================================================================
+QueryDosDevice(DeviceName := "C:") {
+    size := VarSetCapacity(TargetPath, 1023) + 1
+    DllCall("QueryDosDevice", "str", DeviceName, "str", TargetPath, "uint", size)
+    return TargetPath
 }
 ; ==================================================================================================================================
 DuplicateObject(hProc, hCurrentProc, Handle, Options) {
