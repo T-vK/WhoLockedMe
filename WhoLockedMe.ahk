@@ -1,7 +1,7 @@
 ;#### Credits
 ; * Credits to HotkeyIt for the super complicated handle retrievement!
 ; * Credits to "just me" for translating all the handle retrievement stuff into AHK 1.1 and also for GetPathNameByHandle and GetIconByPath and other valuable info about icons in AHK and File System Redirection!
-; * Credits to jNizM for a lot of valuable input and research and fine-tuning of GetExtendedTcpTable and GetProcessFilePath! 
+; * Credits to jNizM for a lot of valuable input and research, QueryDosDevice and fine-tuning of GetExtendedTcpTable and GetProcessFilePath!
 ; * If your name, someone elses name or anything else is missing from this list, tell me please!
 ; 
 ;#### Links

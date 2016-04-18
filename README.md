@@ -1,17 +1,14 @@
 ## WhoLockedMe
 
 #### What does it do?
-This tool shows you a list of all files that are currently being used by any process.  
-Using the instant filter you can easily find out what is responsible for locking a file,
-disallowing you to delete it or even to eject a certain USB device.
-Using this tool you can now easily find files/folders that are being locked and release them with a click of a button.
-
-It now also shows which process is blocking which port.
+Lists of all files and ports that are currently being used/bloked by any process.  
+Using the instant filter you can easily find out what is responsible for locking a file.  
+You can easily close the handles without killing the processes. The tool also allows you to kill the processes though.
 
 #### Credits
  * Credits to HotkeyIt for the super complicated handle retrievement!
  * Credits to "just me" for translating all the handle retrievement stuff into AHK 1.1 and also for GetPathNameByHandle and GetIconByPath and other valuable info about icons in AHK and File System Redirection!
- * Credits to jNizM for a lot of valuable input and research and fine-tuning of GetExtendedTcpTable and GetProcessFilePath! 
+ * Credits to jNizM for a lot of valuable input and research, QueryDosDevice and fine-tuning of GetExtendedTcpTable and GetProcessFilePath!
  * If your name, someone elses name or anything else is missing from this list, tell me please!
 
 #### Links
